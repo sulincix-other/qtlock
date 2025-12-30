@@ -6,14 +6,23 @@
 #include <QPushButton>
 #include <QScreen>
 
+
+#define _(String) gettext(String)
+
 extern "C" {
+    #include <stdlib.h>
+    #include <locale.h>
+    #include <libintl.h>
+
     extern bool pam_auth(const char* user, const char* passwd);
 }
+
 class LockScreen : public QMainWindow {
 public:
     QScreen *screen;
     QLabel *label;
     QLineEdit* passwordLineEdit;
+    int fail = 0;
     LockScreen(){
         this->setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint);
         this->setAttribute(Qt::WA_TranslucentBackground);
@@ -49,7 +58,7 @@ public:
 
         passwordLineEdit = new QLineEdit();
         passwordLineEdit->setEchoMode(QLineEdit::Password);
-        passwordLineEdit->setPlaceholderText("Enter Password");
+        passwordLineEdit->setPlaceholderText(_("Enter Password"));
         passwordLineEdit->setStyleSheet(
             "background-color: #232323;"
             "color: white;"
@@ -57,9 +66,12 @@ public:
             "padding: "+QString::number(10*scale)+"px;"
         );
         connect(passwordLineEdit, &QLineEdit::returnPressed, this, &LockScreen::auth);
+        if (strlen(OSK) > 0){
+            passwordLineEdit->installEventFilter(this);
+        }
         mainLayout->addWidget(passwordLineEdit);
 
-        QPushButton *okButton = new QPushButton("Unlock");
+        QPushButton *okButton = new QPushButton(_("Unlock"));
         okButton->setStyleSheet(
             "background-color: #4CAF50;"
             "color: black;"
@@ -73,6 +85,17 @@ public:
         connect(okButton, &QPushButton::clicked, this, &LockScreen::auth);
     }
 
+    bool eventFilter(QObject* object, QEvent* event){
+        if(object == passwordLineEdit){
+            if (event->type() == QEvent::TouchBegin ||
+                event->type() == QEvent::TabletPress ||
+                event->type() == QEvent::MouseButtonPress){
+                (void)system(QString(QString(OSK)+" &").toStdString().c_str());
+            }
+        }
+        return false;
+    }
+
     void auth(){
         const char* username = getenv("USER");
         if(username == nullptr){
@@ -82,7 +105,7 @@ public:
         if(pam_auth(username, password)){
             QCoreApplication::exit(0);
         } else  {
-            label->setText("Authentication Failed");
+            label->setText(QString(_("Authentication Failed"))+" ("+QString::number(fail)+")");
             passwordLineEdit->setText("");
         }
     }
@@ -90,6 +113,14 @@ public:
 
 int main(int argc, char *argv[]) {
     QApplication a(argc, argv);
+    const char *systemLanguage = getenv("LANG");
+    if (systemLanguage != nullptr) {
+        bindtextdomain("qtlock", "/usr/share/locale");
+        setlocale(LC_ALL, systemLanguage);
+        textdomain("qtlock");
+    } else {
+        fprintf(stderr, "WARNING: LANG environment variable not set.\n");
+    }
     LockScreen *lock = new LockScreen();
     lock->show();
     return a.exec();
