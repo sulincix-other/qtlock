@@ -24,9 +24,11 @@ public:
     QLineEdit* passwordLineEdit;
     int fail = 0;
     LockScreen(){
-        this->setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint);
+        this->setWindowFlags(Qt::WindowStaysOnTopHint
+                             | Qt::Tool
+                             | Qt::WindowSystemMenuHint
+                             | Qt::FramelessWindowHint);
         this->setAttribute(Qt::WA_TranslucentBackground);
-
         screen = QGuiApplication::primaryScreen();
         this->setFixedSize(screen->size());
 
@@ -59,6 +61,7 @@ public:
         passwordLineEdit = new QLineEdit();
         passwordLineEdit->setEchoMode(QLineEdit::Password);
         passwordLineEdit->setPlaceholderText(_("Enter Password"));
+        passwordLineEdit-> setFocusPolicy(Qt::StrongFocus);
         passwordLineEdit->setStyleSheet(
             "background-color: #232323;"
             "color: white;"
@@ -83,6 +86,8 @@ public:
         mainLayout->addWidget(okButton);
 
         connect(okButton, &QPushButton::clicked, this, &LockScreen::auth);
+
+        this->installEventFilter(this);
     }
 
     bool eventFilter(QObject* object, QEvent* event){
@@ -92,9 +97,12 @@ public:
                 event->type() == QEvent::MouseButtonPress){
                 (void)system(QString(QString(OSK)+" &").toStdString().c_str());
             }
+        } else if (event->type() == QEvent::FocusOut){
+            this->activateWindow();
+            passwordLineEdit->setFocus();
         }
         return false;
-    }
+}
 
     void auth(){
         const char* username = getenv("USER");
@@ -107,6 +115,7 @@ public:
         } else  {
             label->setText(QString(_("Authentication Failed"))+" ("+QString::number(fail)+")");
             passwordLineEdit->setText("");
+            fail++;
         }
     }
 };
@@ -122,6 +131,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "WARNING: LANG environment variable not set.\n");
     }
     LockScreen *lock = new LockScreen();
-    lock->show();
+    lock->showFullScreen();
     return a.exec();
 }

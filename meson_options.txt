@@ -1,1 +1,1 @@
-option('osk-command', type: 'string', value: '')
+option('OSK', type: 'string', value: '')

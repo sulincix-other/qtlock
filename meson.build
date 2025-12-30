@@ -13,9 +13,7 @@ deps = [
     dependency('pam'),
 ]
 
-if get_option('osk-command') != ''
-    add_project_arguments('-DOSK="'+get_option('osk-command')+'"', language: 'cpp')
-endif
+add_project_arguments('-DOSK="'+get_option('OSK')+'"', language: 'cpp')
 
 # -fPIC required
 add_project_arguments('-fPIC', language: 'cpp')
