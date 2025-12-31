@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCloseEvent>
 #include <QMainWindow>
 #include <QVBoxLayout>
 #include <QLabel>
@@ -90,6 +91,7 @@ public:
         this->installEventFilter(this);
     }
 
+
     bool eventFilter(QObject* object, QEvent* event){
         if(object == passwordLineEdit){
             if (event->type() == QEvent::TouchBegin ||
@@ -98,6 +100,7 @@ public:
                 (void)system(QString(QString(OSK)+" &").toStdString().c_str());
             }
         } else if (event->type() == QEvent::FocusOut){
+            this->raise();
             this->activateWindow();
             passwordLineEdit->setFocus();
         }
@@ -117,6 +120,10 @@ public:
             passwordLineEdit->setText("");
             fail++;
         }
+    }
+protected:
+    void closeEvent(QCloseEvent *event) override {
+        event->ignore();
     }
 };
 
